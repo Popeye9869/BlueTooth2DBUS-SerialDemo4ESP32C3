@@ -8,10 +8,9 @@ const char* const TARGET_CHARACTERISTIC_UUID = "8651";
 
 constexpr uint32_t SCAN_DURATION_MS = 5000;
 
-uint8_t Buffer[18] = {0};
+uint8_t Buffer[18] = {0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 uint16_t pressedKeys = 0;
 uint16_t position = 0;
-//uint16_t leftDrag = 1024, leftPush = 1024, rightDrag = 1024, rightPush = 1024;
 uint8_t s1 = 3, s2 = 2;
 
 NimBLEAdvertisedDevice* advertisedDevice = nullptr;
@@ -60,16 +59,17 @@ public:
 } scanCallback;
 
 //数据处理
-void packDbusData(uint16_t rightDrag, uint16_t rightPush,
+void packData(uint16_t rightDrag, uint16_t rightPush,
                   uint16_t leftDrag, uint16_t leftPush,
                   uint8_t* buffer) {
-    buffer[0] = rightDrag & 0xFF;
-    buffer[1] = (rightDrag >> 8) | ((rightPush << 3) & 0xF8);
-    buffer[2] = (rightPush >> 5) | ((leftDrag << 6) & 0xC0);
-    buffer[3] = leftDrag >> 2;
-    buffer[4] = (leftDrag >> 10) | ((leftPush << 1) & 0xFE);
-    buffer[5] = (s2 << 6)|(s1 << 4)|(leftPush >> 7);
-    buffer[17] = 0x00;
+    buffer[0] = (rightDrag & 0xFF);
+    buffer[1] = (rightDrag >> 8);
+    buffer[2] = (rightPush & 0xFF);
+    buffer[3] = (rightPush >> 8);
+    buffer[4] = (leftDrag & 0xFF);
+    buffer[5] = (leftDrag >> 8);
+    buffer[6] = (leftPush & 0xFF);
+    buffer[7] = (leftPush >> 8);
 }
 
 // ==================== BLE 特征通知回调 ====================
@@ -190,8 +190,7 @@ void notificationHandler(NimBLERemoteCharacteristic* characteristic,
     }else{
 
     }
-
-    packDbusData(rDragRaw, rPushRaw, lDragRaw, lPushRaw, Buffer);
+    packData(rDragRaw, rPushRaw, lDragRaw, lPushRaw, Buffer);
 
 }
 
@@ -210,16 +209,17 @@ void onTimerInterrupt(void *parameter) {
     xLastWakeTime = xTaskGetTickCount();
     while(1){
         if(isConnected){
-            Serial.write(Buffer, sizeof(Buffer));
+            //Serial.write(Buffer, sizeof(Buffer));
+            Serial1.write(Buffer, sizeof(Buffer));
         }
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(14));
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
     }
 }
 
 void setup()
 {
     Serial.begin(115200);
-    Serial1.begin(115200, SERIAL_8N1, 8, 9);//通信串口初始化
+    Serial1.begin(115200, SERIAL_8N1, 4, 5);//通信串口初始化
     delay(1000);
     Serial.println("Bluetooth Remote Control");//硬件调试串口初始化
 
